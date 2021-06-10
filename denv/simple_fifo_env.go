@@ -8,11 +8,11 @@ import (
 )
 
 type FIFONetwork struct {
-	ins map[uint64]chan Msg
-	outs map[uint64]chan Msg
+	ins     map[uint64]chan Msg
+	outs    map[uint64]chan Msg
 	closeCh map[uint64]chan struct{}
-	wg sync.WaitGroup
-	opt *EnvOptions
+	wg      sync.WaitGroup
+	opt     *EnvOptions
 }
 
 func NewFIFONetwork(opt *EnvOptions) *FIFONetwork {
@@ -23,10 +23,10 @@ func NewFIFONetwork(opt *EnvOptions) *FIFONetwork {
 		outs[uint64(i)] = make(chan Msg, 1024)
 	}
 	n := FIFONetwork{
-		ins: ins,
-		outs: outs,
+		ins:     ins,
+		outs:    outs,
 		closeCh: make(map[uint64]chan struct{}),
-		opt: opt,
+		opt:     opt,
 	}
 	n.wg = sync.WaitGroup{}
 	n.wg.Add(int(opt.ClusterSize))

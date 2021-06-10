@@ -10,7 +10,7 @@ import (
 
 type logicClock struct {
 	timestamp uint64
-	no uint64
+	no        uint64
 }
 
 func (lc logicClock) Less(other logicClock) bool {
@@ -37,9 +37,9 @@ func (lcs logicClocks) Less(i, j int) bool {
 type LamportState uint64
 
 const (
-	Free LamportState = 1
+	Free       LamportState = 1
 	Requesting LamportState = 2
-	Executing LamportState = 3
+	Executing  LamportState = 3
 )
 
 type LamportMutex struct {
@@ -50,19 +50,19 @@ type LamportMutex struct {
 type LamportNode struct {
 	state LamportState
 	logicClock
-	reqClock logicClock
+	reqClock    logicClock
 	clusterSize uint64
-	rq logicClocks
+	rq          logicClocks
 
-	sender chan<- denv.Msg
+	sender   chan<- denv.Msg
 	receiver <-chan denv.Msg
 
-	apiCh chan LamportMutex     // mutex request
+	apiCh    chan LamportMutex // mutex request
 	replyMap map[uint64]bool
-	cb chan struct{}
+	cb       chan struct{}
 
-	closeCh chan struct{}       // shutdown
-	wg sync.WaitGroup
+	closeCh chan struct{} // shutdown
+	wg      sync.WaitGroup
 }
 
 type MsgType int32
@@ -74,11 +74,11 @@ const (
 )
 
 type LamportMsg struct {
-	from uint64
-	to uint64
+	from    uint64
+	to      uint64
 	msgType MsgType
-	msgTs logicClock
-	reqTs logicClock
+	msgTs   logicClock
+	reqTs   logicClock
 }
 
 func getMsgTypeString(msgType MsgType) string {
@@ -117,7 +117,7 @@ func (m LamportMsg) String() string {
 type MutexType int32
 
 const (
-	Lock MutexType = 1
+	Lock   MutexType = 1
 	Unlock MutexType = 2
 )
 
@@ -129,15 +129,15 @@ func NewLamportNode(no uint64, clusterSize uint64) *LamportNode {
 	wg := sync.WaitGroup{}
 	wg.Add(1)
 	return &LamportNode{
-		state: Free,
-		logicClock: logicClock{0, no},
-		reqClock: logicClock{0, no},
+		state:       Free,
+		logicClock:  logicClock{0, no},
+		reqClock:    logicClock{0, no},
 		clusterSize: clusterSize,
 
-		rq: []logicClock{},
-		apiCh: make(chan LamportMutex, 1024),
+		rq:      []logicClock{},
+		apiCh:   make(chan LamportMutex, 1024),
 		closeCh: make(chan struct{}, 1024),
-		wg: wg,
+		wg:      wg,
 	}
 }
 
@@ -150,11 +150,11 @@ func (ln *LamportNode) RequestCriticalSection() {
 	for i := 0; i < int(ln.clusterSize); i++ {
 		if i != int(ln.no) {
 			req := LamportMsg{
-				from:      ln.no,
-				to:        uint64(i),
-				msgType:   MsgtypeRequest,
-				msgTs:     ln.logicClock,
-				reqTs:     ln.reqClock,
+				from:    ln.no,
+				to:      uint64(i),
+				msgType: MsgtypeRequest,
+				msgTs:   ln.logicClock,
+				reqTs:   ln.reqClock,
 			}
 			ln.sender <- req
 			log.Printf("Node %v send REQUEST to Node %v: %v", ln.no, i, req.String())
@@ -174,11 +174,11 @@ func (ln *LamportNode) ReleaseCriticalSection(cb chan struct{}) {
 	for i := 0; i < int(ln.clusterSize); i++ {
 		if i != int(ln.no) {
 			req := LamportMsg{
-				from:      ln.no,
-				to:        uint64(i),
-				msgType:   MsgtypeRelease,
-				msgTs:     ln.logicClock,
-				reqTs:     ln.reqClock,
+				from:    ln.no,
+				to:      uint64(i),
+				msgType: MsgtypeRelease,
+				msgTs:   ln.logicClock,
+				reqTs:   ln.reqClock,
 			}
 			ln.sender <- req
 			log.Printf("Node %v send RELEASE to Node %v: %v", ln.no, i, req.String())
@@ -205,15 +205,15 @@ func (ln *LamportNode) HandleReleaseRequest(ts logicClock) {
 		log.Panic("Request is not found in RQ")
 		return
 	}
-	ln.rq = append(ln.rq[:idx], ln.rq[idx + 1:]...)
+	ln.rq = append(ln.rq[:idx], ln.rq[idx+1:]...)
 }
 
 func (ln *LamportNode) SendReply(to uint64) {
 	reply := LamportMsg{
-		from: ln.no,
-		to: to,
+		from:    ln.no,
+		to:      to,
 		msgType: MsgtypeReply,
-		msgTs: ln.logicClock,
+		msgTs:   ln.logicClock,
 	}
 	ln.sender <- reply
 	log.Printf("Node %v send REPLY to Node %v: %v", ln.no, to, reply.String())
@@ -230,7 +230,7 @@ func (ln *LamportNode) UpdateReplyMap(ts logicClock) {
 	}
 	sort.Sort(ln.rq)
 	log.Printf("Node %v After Update Reply Map: %v", ln.no, ln.rq)
-	if uint64(len(ln.replyMap)) == ln.clusterSize - 1 &&
+	if uint64(len(ln.replyMap)) == ln.clusterSize-1 &&
 		ln.rq[0].timestamp == ln.reqClock.timestamp && ln.rq[0].no == ln.reqClock.no {
 		ln.state = Executing
 		ln.cb <- struct{}{}
